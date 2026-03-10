@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Onboarding — Sign Mídia</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 66'><path d='M24 4 L44 24 L24 62 L4 24 Z' stroke='%23820AD1' stroke-width='3' fill='none'/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:#0a000f;font-family:'Montserrat',sans-serif;min-height:100vh;overflow-x:hidden}
+::selection{background:#820AD1;color:#fff}
+input::placeholder,textarea::placeholder{color:rgba(229,212,245,0.3)}
+select option{background:#0D0015;color:#E5D4F5}
+input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.5) sepia(1) hue-rotate(230deg)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes checkIn{from{transform:scale(0)}to{transform:scale(1)}}
+.fade-in{animation:fadeIn 0.5s ease forwards}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const WEBHOOK_URL = 'https://hook.us1.make.com/pgdqqdcq572j51phbcsz2ehz9m5rrlhy';
+function NibIcon({ size = 30 }) {
+  const h = size * 1.35;
+  return (
+    <svg width={size} height={h} viewBox="0 0 48 66" fill="none">
+      <path d="M24 4 L44 24 L24 62 L4 24 Z" stroke="#820AD1" strokeWidth="1.2" fill="none"/>
+      <line x1="24" y1="24" x2="24" y2="62" stroke="#820AD1" strokeWidth="1.2"/>
+      <circle cx="24" cy="62" r="2" fill="#820AD1"/>
+    </svg>
+  );
+}
+
+function SignLogo({ size = 'md' }) {
+  const cfg = {
+    sm: { svg: 18, font: 26, sub: 7, gap: 10, lineW: 60, dot: 3, ls: '4px' },
+    md: { svg: 28, font: 38, sub: 9, gap: 14, lineW: 80, dot: 3, ls: '6px' },
+    lg: { svg: 34, font: 48, sub: 11, gap: 16, lineW: 100, dot: 4, ls: '8px' },
+  }[size];
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:`${cfg.gap}px` }}>
+      <NibIcon size={cfg.svg}/>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
+        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:`${cfg.font}px`, fontWeight:300, color:'#fff', letterSpacing:'2px' }}>Sign</div>
+        <div style={{ display:'flex', alignItems:'center', width:`${cfg.lineW}px` }}>
+          <div style={{ flex:1, height:'1px', background:'#820AD1', opacity:.5 }}/>
+          <div style={{ width:`${cfg.dot}px`, height:`${cfg.dot}px`, background:'#820AD1', borderRadius:'50%', margin:'0 6px', flexShrink:0 }}/>
+          <div style={{ flex:1, height:'1px', background:'#820AD1', opacity:.5 }}/>
+        </div>
+        <div style={{ fontFamily:"'Montserrat',sans-serif", fontSize:`${cfg.sub}px`, fontWeight:300, letterSpacing:cfg.ls, color:'#B670E0', textTransform:'uppercase' }}>Mídia</div>
+      </div>
+    </div>
+  );
+}
+
+function Steps({ current, total }) {
+  return (
+    <div style={{ display:'flex', gap:'8px', justifyContent:'center', margin:'24px 0 28px' }}>
+      {Array.from({ length: total }, (_, i) => (
+        <div key={i} style={{
+          width: i === current ? '32px' : '10px', height:'4px', borderRadius:'2px',
+          background: i <= current ? '#820AD1' : 'rgba(130,10,209,0.15)',
+          transition:'all 0.4s ease',
+        }}/>
+      ))}
+    </div>
+  );
+}
+function Field({ label, name, value, onChange, type='text', placeholder, required, mask, half }) {
+  const handleChange = (e) => {
+    let v = e.target.value;
+    if (mask === 'cpf') {
+      v = v.replace(/\D/g,'').slice(0,11);
+      v = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+    } else if (mask === 'cnpj') {
+      v = v.replace(/\D/g,'').slice(0,14);
+      v = v.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');
+    } else if (mask === 'phone') {
+      v = v.replace(/\D/g,'').slice(0,11);
+      if (v.length>2) v=`(${v.slice(0,2)}) ${v.slice(2)}`;
+      if (v.length>10) { const d=v.replace(/\D/g,''); v=`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`; }
+    } else if (mask === 'currency') {
+      v = v.replace(/\D/g,'');
+      if (v) v = (parseInt(v)/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
+    }
+    onChange(name, v);
+  };
+  const inputStyle = {
+    background:'rgba(130,10,209,0.06)', border:'1px solid rgba(130,10,209,0.2)', borderRadius:'8px',
+    padding:'13px 16px', color:'#E5D4F5', fontSize:'14px', fontFamily:"'Montserrat',sans-serif",
+    outline:'none', transition:'border-color 0.3s', width:'100%',
+  };
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:'6px', width:'100%' }}>
+      <label style={{ fontSize:'10px', letterSpacing:'2px', textTransform:'uppercase', color:'#B670E0', fontWeight:300 }}>
+        {label} {required && <span style={{ color:'#820AD1' }}>*</span>}
+      </label>
+      <input type={type} value={value||''} onChange={handleChange} placeholder={placeholder} required={required}
+        style={inputStyle}
+        onFocus={e=>e.target.style.borderColor='#820AD1'}
+        onBlur={e=>e.target.style.borderColor='rgba(130,10,209,0.2)'}
+      />
+    </div>
+  );
+}
+
+function Select({ label, name, value, onChange, options, required }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:'6px', width:'100%' }}>
+      <label style={{ fontSize:'10px', letterSpacing:'2px', textTransform:'uppercase', color:'#B670E0', fontWeight:300 }}>
+        {label} {required && <span style={{ color:'#820AD1' }}>*</span>}
+      </label>
+      <select value={value||''} onChange={e=>onChange(name,e.target.value)} required={required}
+        style={{
+          background:'rgba(130,10,209,0.06)', border:'1px solid rgba(130,10,209,0.2)', borderRadius:'8px',
+          padding:'13px 16px', color: value ? '#E5D4F5' : 'rgba(229,212,245,0.3)', fontSize:'14px',
+          fontFamily:"'Montserrat',sans-serif", outline:'none', appearance:'none', cursor:'pointer', width:'100%',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23820AD1' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+          backgroundRepeat:'no-repeat', backgroundPosition:'right 16px center',
+        }}>
+        <option value="">Selecione...</option>
+        {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
+function Checkbox({ label, checked, onChange }) {
+  return (
+    <label style={{
+      display:'flex', alignItems:'center', gap:'12px', cursor:'pointer', padding:'14px 16px', borderRadius:'10px',
+      background: checked ? 'rgba(130,10,209,0.12)' : 'rgba(130,10,209,0.03)',
+      border: `1px solid ${checked ? 'rgba(130,10,209,0.5)' : 'rgba(130,10,209,0.1)'}`,
+      transition:'all 0.3s',
+    }} onClick={onChange}>
+      <div style={{
+        width:'20px', height:'20px', borderRadius:'4px', flexShrink:0,
+        border: `2px solid ${checked ? '#820AD1' : 'rgba(130,10,209,0.25)'}`,
+        background: checked ? '#820AD1' : 'transparent',
+        display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s',
+      }}>
+        {checked && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+      </div>
+      <span style={{ color:'#E5D4F5', fontSize:'14px', fontWeight:300 }}>{label}</span>
+    </label>
+  );
+}
+
+function TextArea({ label, name, value, onChange, placeholder }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:'6px', width:'100%' }}>
+      <label style={{ fontSize:'10px', letterSpacing:'2px', textTransform:'uppercase', color:'#B670E0', fontWeight:300 }}>{label}</label>
+      <textarea value={value||''} onChange={e=>onChange(name,e.target.value)} placeholder={placeholder} rows={3}
+        style={{
+          background:'rgba(130,10,209,0.06)', border:'1px solid rgba(130,10,209,0.2)', borderRadius:'8px',
+          padding:'13px 16px', color:'#E5D4F5', fontSize:'14px', fontFamily:"'Montserrat',sans-serif",
+          outline:'none', resize:'vertical', width:'100%',
+        }}
+        onFocus={e=>e.target.style.borderColor='#820AD1'}
+        onBlur={e=>e.target.style.borderColor='rgba(130,10,209,0.2)'}
+      />
+    </div>
+  );
+}
+
+function SummaryRow({ label, value }) {
+  return (
+    <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px solid rgba(130,10,209,0.08)' }}>
+      <span style={{ fontSize:'12px', color:'rgba(182,112,224,0.5)', fontWeight:300 }}>{label}</span>
+      <span style={{ fontSize:'13px', color:'#E5D4F5', fontWeight:300, textAlign:'right', maxWidth:'60%' }}>{value||'\u2014'}</span>
+    </div>
+  );
+}
+function App() {
+  const [step, setStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [animKey, setAnimKey] = useState(0);
+  const [f, setF] = useState({
+    nome_completo:'', razao_social:'', tipo_documento:'', cpf:'', cnpj:'',
+    telefone:'', email:'', google_ads:false, meta_ads:false,
+    valor_mensal:'', tipo_pagamento:'', vencimento:'', data_inicio:'',
+    credito_midia:'', responsavel:'', nome_reuniao:'', observacoes:'',
+  });
+
+  const set = (name, value) => setF(prev => ({ ...prev, [name]: value }));
+  const toggle = (name) => setF(prev => ({ ...prev, [name]: !prev[name] }));
+
+  const goNext = () => {
+    if (step===0) {
+      if (!f.nome_completo||!f.tipo_documento||!f.telefone||!f.email) { alert('Preencha todos os campos obrigatórios.'); return; }
+      if (f.tipo_documento==='cpf'&&!f.cpf) { alert('Preencha o CPF.'); return; }
+      if (f.tipo_documento==='cnpj'&&!f.cnpj) { alert('Preencha o CNPJ.'); return; }
+    }
+    if (step===1) {
+      if (!f.google_ads&&!f.meta_ads) { alert('Selecione pelo menos um serviço.'); return; }
+      if (!f.valor_mensal||!f.tipo_pagamento||!f.vencimento) { alert('Preencha todos os campos obrigatórios.'); return; }
+    }
+    setAnimKey(k=>k+1);
+    setStep(s=>s+1);
+  };
+
+  const goBack = () => { setAnimKey(k=>k+1); setStep(s=>s-1); };
+
+  const submit = async () => {
+    if (!f.nome_reuniao) { alert('Preencha o nome para reuniões — é essencial para a automação.'); return; }
+    setSubmitting(true);
+    const payload = {
+      ...f,
+      servicos: [f.google_ads&&'Google Ads', f.meta_ads&&'Meta Ads'].filter(Boolean),
+    };
+    delete payload.google_ads;
+    delete payload.meta_ads;
+    try {
+      if (WEBHOOK_URL) {
+        await fetch(WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      }
+      setSubmitted(true);
+    } catch(err) {
+      console.error(err);
+      alert('Erro ao enviar. Tente novamente.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  if (submitted) {
+    return (
+      <div style={S.page}>
+        <div style={S.card} className="fade-in">
+          <SignLogo size="md"/>
+          <div style={{ marginTop:'40px', textAlign:'center' }}>
+            <div style={{ width:'68px', height:'68px', borderRadius:'50%', background:'rgba(130,10,209,0.12)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px', animation:'checkIn 0.4s ease' }}>
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#820AD1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'30px', fontWeight:300, color:'#fff', marginBottom:'12px' }}>Cliente Cadastrado</h2>
+            <p style={{ color:'#B670E0', fontSize:'14px', fontWeight:300, lineHeight:1.7 }}>
+              <strong style={{ color:'#E5D4F5' }}>{f.nome_completo}</strong> foi adicionado com sucesso.<br/>
+              Os processos serão criados automaticamente.
+            </p>
+            <button onClick={()=>{ setSubmitted(false); setStep(0); setF({
+              nome_completo:'',razao_social:'',tipo_documento:'',cpf:'',cnpj:'',telefone:'',email:'',
+              google_ads:false,meta_ads:false,valor_mensal:'',tipo_pagamento:'',vencimento:'',data_inicio:'',
+              credito_midia:'',responsavel:'',nome_reuniao:'',observacoes:'',
+            }); }} style={{ ...S.btnSec, marginTop:'28px' }}>Cadastrar outro cliente</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const titles = ['Dados do Cliente', 'Contrato & Serviços', 'Operacional'];
+  return (
+    <div style={S.page}>
+      <div style={S.card}>
+        <SignLogo size="sm"/>
+        <div style={{ marginTop:'28px', textAlign:'center' }}>
+          <h1 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'26px', fontWeight:300, color:'#fff', marginBottom:'2px' }}>Novo Cliente</h1>
+          <p style={{ fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', color:'rgba(182,112,224,0.5)', fontWeight:300 }}>{titles[step]}</p>
+        </div>
+        <Steps current={step} total={3}/>
+
+        <div key={animKey} className="fade-in">
+          {step===0 && (
+            <div style={S.fields}>
+              <Field label="Nome Completo" name="nome_completo" value={f.nome_completo} onChange={set} placeholder="Nome completo do cliente" required/>
+              <Field label="Razão Social" name="razao_social" value={f.razao_social} onChange={set} placeholder="Se houver"/>
+              <Select label="Tipo de Documento" name="tipo_documento" value={f.tipo_documento} onChange={set} required options={[{value:'cpf',label:'CPF'},{value:'cnpj',label:'CNPJ'}]}/>
+              {f.tipo_documento==='cpf' && <Field label="Número do CPF" name="cpf" value={f.cpf} onChange={set} placeholder="000.000.000-00" mask="cpf" required/>}
+              {f.tipo_documento==='cnpj' && <Field label="Número do CNPJ" name="cnpj" value={f.cnpj} onChange={set} placeholder="00.000.000/0000-00" mask="cnpj" required/>}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
+                <Field label="Telefone" name="telefone" value={f.telefone} onChange={set} placeholder="(00) 00000-0000" mask="phone" required/>
+                <Field label="Email" name="email" value={f.email} onChange={set} placeholder="email@exemplo.com" type="email" required/>
+              </div>
+            </div>
+          )}
+
+          {step===1 && (
+            <div style={S.fields}>
+              <div>
+                <label style={{ fontSize:'10px', letterSpacing:'2px', textTransform:'uppercase', color:'#B670E0', fontWeight:300, marginBottom:'10px', display:'block' }}>
+                  Serviço(s) Contratado(s) <span style={{ color:'#820AD1' }}>*</span>
+                </label>
+                <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                  <Checkbox label="Google Ads" checked={f.google_ads} onChange={()=>toggle('google_ads')}/>
+                  <Checkbox label="Meta Ads (Facebook & Instagram)" checked={f.meta_ads} onChange={()=>toggle('meta_ads')}/>
+                </div>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
+                <Field label="Valor Mensal (R$)" name="valor_mensal" value={f.valor_mensal} onChange={set} placeholder="0,00" mask="currency" required/>
+                <Field label="Crédito de Mídia (R$)" name="credito_midia" value={f.credito_midia} onChange={set} placeholder="0,00" mask="currency"/>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
+                <Select label="Tipo de Pagamento" name="tipo_pagamento" value={f.tipo_pagamento} onChange={set} required options={[
+                  {value:'Recorrente',label:'Recorrente'},{value:'Avulso',label:'Avulso'},{value:'Parcelado',label:'Parcelado'},
+                ]}/>
+                <Select label="Vencimento" name="vencimento" value={f.vencimento} onChange={set} required options={[
+                  {value:'Dia 05',label:'Dia 05'},{value:'Dia 10',label:'Dia 10'},{value:'Dia 15',label:'Dia 15'},
+                  {value:'Dia 20',label:'Dia 20'},{value:'Dia 25',label:'Dia 25'},{value:'Dia 30',label:'Dia 30'},
+                ]}/>
+              </div>
+              <Field label="Data de Início do Contrato" name="data_inicio" value={f.data_inicio} onChange={set} type="date"/>
+            </div>
+          )}
+          {step===2 && (
+            <div style={S.fields}>
+              <Field label="Nome para Reuniões (Fathom)" name="nome_reuniao" value={f.nome_reuniao} onChange={set} placeholder="Ex: Soares E Sousa" required/>
+              <p style={{ fontSize:'11px', color:'rgba(182,112,224,0.4)', fontWeight:300, marginTop:'-10px', lineHeight:1.5, paddingLeft:'2px' }}>
+                Este nome precisa aparecer no título das reuniões no Fathom para que a automação identifique o cliente.
+              </p>
+              <Field label="Responsável pela Conta" name="responsavel" value={f.responsavel} onChange={set} placeholder="Quem vai gerenciar este cliente"/>
+              <TextArea label="Observações" name="observacoes" value={f.observacoes} onChange={set} placeholder="Notas adicionais sobre o cliente..."/>
+              <div style={{ background:'rgba(130,10,209,0.06)', borderRadius:'12px', padding:'18px 20px', border:'1px solid rgba(130,10,209,0.1)', marginTop:'4px' }}>
+                <p style={{ fontSize:'10px', letterSpacing:'2px', textTransform:'uppercase', color:'#B670E0', fontWeight:300, marginBottom:'12px' }}>Resumo do Cadastro</p>
+                <SummaryRow label="Cliente" value={f.nome_completo}/>
+                <SummaryRow label="Documento" value={f.tipo_documento==='cpf'?`CPF: ${f.cpf}`:`CNPJ: ${f.cnpj}`}/>
+                <SummaryRow label="Contato" value={f.email}/>
+                <SummaryRow label="Serviços" value={[f.google_ads&&'Google Ads',f.meta_ads&&'Meta Ads'].filter(Boolean).join(', ')}/>
+                <SummaryRow label="Valor Mensal" value={f.valor_mensal?`R$ ${f.valor_mensal}`:''}/>
+                <SummaryRow label="Pagamento" value={[f.tipo_pagamento,f.vencimento].filter(Boolean).join(' — ')}/>
+                <SummaryRow label="Nome Reuniões" value={f.nome_reuniao}/>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display:'flex', justifyContent: step===0?'flex-end':'space-between', marginTop:'28px', gap:'12px' }}>
+          {step>0 && <button onClick={goBack} style={S.btnSec}>Voltar</button>}
+          {step<2 ? (
+            <button onClick={goNext} style={S.btnPri}>Próximo</button>
+          ) : (
+            <button onClick={submit} disabled={submitting} style={{ ...S.btnPri, opacity:submitting?.6:1, cursor:submitting?'wait':'pointer' }}>
+              {submitting?'Enviando...':'Cadastrar Cliente'}
+            </button>
+          )}
+        </div>
+      </div>
+      <p style={{ marginTop:'24px', fontSize:'9px', letterSpacing:'3px', color:'rgba(130,10,209,0.25)', textTransform:'uppercase' }}>Sign Mídia © 2026</p>
+    </div>
+  );
+}
+
+const S = {
+  page: {
+    minHeight:'100vh', background:'#0a000f', display:'flex', flexDirection:'column',
+    alignItems:'center', justifyContent:'center', padding:'32px 16px',
+  },
+  card: {
+    width:'100%', maxWidth:'500px', background:'rgba(13,0,21,0.85)',
+    border:'1px solid rgba(130,10,209,0.12)', borderRadius:'20px', padding:'36px 28px',
+  },
+  fields: { display:'flex', flexDirection:'column', gap:'16px' },
+  btnPri: {
+    background:'#820AD1', color:'#fff', border:'none', borderRadius:'10px', padding:'13px 30px',
+    fontSize:'12px', fontFamily:"'Montserrat',sans-serif", fontWeight:400, letterSpacing:'1.5px',
+    cursor:'pointer', transition:'all 0.3s', textTransform:'uppercase',
+  },
+  btnSec: {
+    background:'transparent', color:'#B670E0', border:'1px solid rgba(130,10,209,0.25)',
+    borderRadius:'10px', padding:'13px 30px', fontSize:'12px', fontFamily:"'Montserrat',sans-serif",
+    fontWeight:300, letterSpacing:'1.5px', cursor:'pointer', transition:'all 0.3s', textTransform:'uppercase',
+  },
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
